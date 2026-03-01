@@ -19,6 +19,7 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
         <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/markdown-it@10.0.0/dist/markdown-it.min.js"></script>
         <script>
             const IV = 'I4zyA4lVtMCbJ5gg';                     //length 16
             const HMAC_KEY = 'I3zyA4l4tMCbJfa'
@@ -132,7 +133,11 @@
                     alert("Wrong password!")
                     return;
                 }
-                document.body.innerHTML = plaintext
+                var md = window.markdownit({
+                    breaks:       true,
+                    linkify:      true,
+                });
+                document.body.innerHTML = md.render(plaintext)
             }
 
             function onload() {
