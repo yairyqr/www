@@ -87,6 +87,7 @@
             }
 
             function displayQr(link) {
+                document.getElementById('qrcode').innerHTML = "";
                 const qrcode = new QRCode(document.getElementById('qrcode'), {
                     text:link,
                     width: 256,
@@ -127,6 +128,10 @@
                 console.log(key, message)
                 const plaintext = decrypt(message, key).toString(CryptoJS.enc.Utf8)
                 console.log(plaintext)
+                if (!plaintext) {
+                    alert("Wrong password!")
+                    return;
+                }
                 document.body.innerHTML = plaintext
             }
 
@@ -141,6 +146,7 @@
             
 
         </script>
+        <h1>Encrypted QR Service</h1>
         <div id="create-message">
             <div class="mb-3">
                 <label class="form-label">Message:</label>
@@ -161,10 +167,12 @@
 
         </div>
 
-        <div id="open-message" style="display: none">
-            <label class="form-label" id="message-hint">Hint: PLACEHOLDER</label>
-            <label class="form-label">Secret Key:</label>
-            <input type="text"  class="form-text" id="message-key"></input>
+        <div id="open-message" style="display: none;text-align: center;" >
+            <h6 id="message-hint">Hint: PLACEHOLDER</h6>
+            <div class="mb-3">
+                <label class="form-label">Secret Key:</label>
+                <input type="password"  class="form-text" id="message-key"></input>
+            </div>
             <button class="btn btn-primary" onclick="openMessage()">Open</button>
         </div>
 
