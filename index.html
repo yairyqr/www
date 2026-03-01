@@ -1,0 +1,174 @@
+<html>
+    <head>
+        <style>
+            #create-message {
+                width: 50%;
+                
+            }
+
+            body {
+                display: flex;
+                align-items: center;
+                flex-direction: column;
+            }
+        </style>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    </head>
+
+    <body>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+        <script>
+            const IV = 'I4zyA4lVtMCbJ5gg';                     //length 16
+            const HMAC_KEY = 'I3zyA4l4tMCbJfa'
+            const MAX_DATA_LENGTH = 2048
+            const urlParams = new URLSearchParams(window.location.search);
+            const HINT_QUERY_PARAM = 'p'
+            const MESSAGE_QUERY_PARAM = 'q'
+            var keySize = 256;
+            var ivSize = 128;
+            var iterations = 100;
+            function encrypt (msg, pass) {
+                var salt = CryptoJS.lib.WordArray.random(128/8);
+            
+                var key = CryptoJS.PBKDF2(pass, salt, {
+                    keySize: keySize/32,
+                    iterations: iterations
+                    });
+
+                var iv = CryptoJS.lib.WordArray.random(ivSize/8);
+                
+                var encrypted = CryptoJS.AES.encrypt(msg, key, { 
+                    iv: iv, 
+                    padding: CryptoJS.pad.Pkcs7,
+                    mode: CryptoJS.mode.CBC,
+                    hasher: CryptoJS.algo.SHA256
+                });
+            
+                // salt, iv will be hex 32 in length
+                // append them to the ciphertext for use  in decryption
+                var transitmessage = salt.toString()+ iv.toString() + encrypted.toString();
+                return transitmessage;
+            }
+
+            function decrypt (transitmessage, pass) {
+            var salt = CryptoJS.enc.Hex.parse(transitmessage.substr(0, 32));
+            var iv = CryptoJS.enc.Hex.parse(transitmessage.substr(32, 32))
+            var encrypted = transitmessage.substring(64);
+            
+            var key = CryptoJS.PBKDF2(pass, salt, {
+                keySize: keySize/32,
+                iterations: iterations
+                });
+
+            var decrypted = CryptoJS.AES.decrypt(encrypted, key, { 
+                iv: iv, 
+                padding: CryptoJS.pad.Pkcs7,
+                mode: CryptoJS.mode.CBC,
+                hasher: CryptoJS.algo.SHA256
+            })
+            return decrypted;
+            }
+
+            function createLink() {
+                const data = document.getElementById("user-data").value;
+                const key = document.getElementById("user-key").value;
+                const hint = document.getElementById("user-hint").value;
+                if (data.length >= MAX_DATA_LENGTH) {
+                    alert(`Data too long: ${data.length} > ${MAX_DATA_LENGTH}`);
+                    return null;
+                }
+
+                const encryptedData = encrypt(data, key).replace(/\//g, '_').replace(/\+/g, '-');
+                const url = `${window.location.href}?${HINT_QUERY_PARAM}=${hint}&${MESSAGE_QUERY_PARAM}=${encryptedData}`;
+                console.log(url)
+                return url;
+            }
+
+            function displayQr(link) {
+                const qrcode = new QRCode(document.getElementById('qrcode'), {
+                    text:link,
+                    width: 256,
+                    height: 256,
+                    colorDark : '#000',
+                    colorLight : '#fff',
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+                document.getElementById('qrcode').style.display = "";
+            }
+
+            function createMessage() {
+                console.log("create")
+                const link = createLink()
+                if (link === null) {
+                    return;
+                }
+
+                displayQr(link)
+            }
+            
+            function displayMessage() {
+                document.getElementById("create-message").style.display = "none";
+                document.getElementById("open-message").style.display = "";
+                
+                const hint = urlParams.get(HINT_QUERY_PARAM)
+                if (hint) {
+                    document.getElementById("message-hint").innerText = `Hint: ${hint}`
+                } else {
+                    document.getElementById("message-hint").innerText = ``
+                }
+
+            }
+
+            function openMessage() {
+                const key = document.getElementById("message-key").value;
+                const message = urlParams.get(MESSAGE_QUERY_PARAM).replace(/_/g, '/').replace(/-/g, '+')
+                console.log(key, message)
+                const plaintext = decrypt(message, key).toString(CryptoJS.enc.Utf8)
+                console.log(plaintext)
+                document.body.innerHTML = plaintext
+            }
+
+            function onload() {
+                const message = urlParams.get('q');
+                if (message) {
+                    displayMessage()
+                }
+            }
+
+            document.onreadystatechange = onload
+            
+
+        </script>
+        <div id="create-message">
+            <div class="mb-3">
+                <label class="form-label">Message:</label>
+                <textarea id="user-data" class="form-control"></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Hint (Public):</label>
+                <input type="text"  class="form-control" id="user-hint"></input>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Secret Key:</label>
+                <input type="password"  class="form-control" id="user-key"></input>
+            </div>
+            <button  class="btn btn-primary" onclick="createMessage()">Create</button>
+        </div>
+
+        <div id="qrcode" style="display: none">
+
+        </div>
+
+        <div id="open-message" style="display: none">
+            <label class="form-label" id="message-hint">Hint: PLACEHOLDER</label>
+            <label class="form-label">Secret Key:</label>
+            <input type="text"  class="form-text" id="message-key"></input>
+            <button class="btn btn-primary" onclick="openMessage()">Open</button>
+        </div>
+
+        
+
+    </body>
+</html>
